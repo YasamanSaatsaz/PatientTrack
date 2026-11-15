@@ -10,6 +10,7 @@ PatientTrack is a small prototype for organizing synthetic patient-reported derm
 - **SQLite storage** for patients, medications, symptom reports and observations, bloodwork reminders, and progress-photo metadata.
 - **Synthetic sample dataset** with five fictional patients and longitudinal dermatology reports.
 - **Rule-based text parser** that extracts supported symptom details and flags ambiguous or incomplete reports for review.
+- **Report-processing service** that connects the parser to the database, validates the patient and report input, and saves the original report alongside its extracted observations and review status.
 - **Patient analytics** that summarize observation counts, severity, and descriptive symptom trends.
 - **Streamlit dashboard** with patient and symptom selection, severity trend charts, summary metrics, and an underlying-report table.
 - **Pre-visit summary generation** that consolidates patient information into a Markdown document that can be previewed and downloaded.
@@ -28,6 +29,7 @@ PatientTrack/
 ├── queries.py
 ├── charts.py
 ├── parser.py
+├── report_service.py
 ├── analytics.py
 ├── visit_summary.py
 ├── requirements.txt
@@ -110,12 +112,13 @@ The summary includes the available patient overview, symptom history and trend i
 | `database.py` | Creates the SQLite schema and provides database operations. |
 | `sample_data.py` | Adds the fictional demonstration patients and related records. |
 | `parser.py` | Demonstrates rule-based extraction from free-text symptom reports. |
+| `report_service.py` | Connects the parser to the database by processing patient-submitted reports and saving extracted observations and review flags. |
 | `queries.py` | Provides reusable queries for patient histories and symptom observations. |
 | `analytics.py` | Calculates descriptive patient-level symptom statistics and trends. |
 | `visit_summary.py` | Generates a provider-facing pre-visit summary in Markdown. |
 | `charts.py` | Runs the Streamlit dashboard and connects the chart and summary workflow. |
 
-At a high level, patient reports are represented by validated models, stored in SQLite, retrieved through query functions, and used by the analytics and presentation layers.
+At a high level, patient reports are submitted as free text, processed by the rule-based parser, and passed through the report-processing service. The service validates the patient, preserves the original report, and saves the structured observations and review flags in SQLite. The stored data can then be retrieved through query functions and used by the analytics and presentation layers.
 
 ## Design decisions and trade-offs
 
@@ -142,7 +145,7 @@ A Markdown summary is portable, simple to generate, easy to inspect, and straigh
 ## Limitations and next steps
 
 - The parser is a rule-based demonstration and does not understand every way a patient might describe a symptom.
-- The parser demonstration is separate from the current seeded dashboard data flow; parser review flags are not automatically persisted into the sample database unless a report is explicitly processed and saved through an integrated workflow.
+- The report-processing service can save parsed reports to SQLite when called programmatically, but it is not yet connected to a report-submission form in the Streamlit dashboard.
 - The dashboard and generated summary operate on the records already stored in the local SQLite database.
 - Progress-photo entries represent metadata and file references; the summary does not embed or clinically assess images.
 - The prototype has no authentication, authorization, encryption-at-rest configuration, audit trail, EHR connection, or production deployment controls.
