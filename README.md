@@ -1,2 +1,171 @@
 # PatientTrack
-A small prototype that takes as input short daily updates submitted by patients. These updates can include symptoms from dermatology treatments, bloodwork reminders, and more. The prototype extracts useful structured information, stores it, and shows the results in a dashboard that a dermatologist can quickly review.
+
+PatientTrack is a small prototype for organizing synthetic patient-reported dermatology updates over time. It demonstrates how free-text symptom reports can be represented as structured data, stored in a relational database, analyzed for simple trends, and presented in a provider-facing dashboard with a downloadable pre-visit summary.
+
+> **Prototype and data notice:** This project uses synthetic demonstration data only. It is not a production clinical system, does not provide diagnoses, and should not be used to make treatment decisions.
+
+## Features
+
+- **Patient and clinical data models** using Pydantic.
+- **SQLite storage** for patients, medications, symptom reports and observations, bloodwork reminders, and progress-photo metadata.
+- **Synthetic sample dataset** with five fictional patients and longitudinal dermatology reports.
+- **Rule-based text parser** that extracts supported symptom details and flags ambiguous or incomplete reports for review.
+- **Patient analytics** that summarize observation counts, severity, and descriptive symptom trends.
+- **Streamlit dashboard** with patient and symptom selection, severity trend charts, summary metrics, and an underlying-report table.
+- **Pre-visit summary generation** that consolidates patient information into a Markdown document that can be previewed and downloaded.
+
+## Project structure
+
+```text
+PatientTrack/
+├── data/
+│   └── patienttrack.db
+├── summaries/
+│   └── P001_pre_visit_summary.md
+├── models.py
+├── database.py
+├── sample_data.py
+├── queries.py
+├── charts.py
+├── parser.py
+├── analytics.py
+├── visit_summary.py
+├── requirements.txt
+└── README.md
+```
+
+The `data/` and `summaries/` directories are created or populated when the relevant scripts run. The SQLite database is generated locally; it does not need to be committed to the repository.
+
+## Requirements
+
+- Python 3.10 or later
+- pip
+
+The dependencies are listed in `requirements.txt`:
+
+- Streamlit
+- pandas
+- Plotly
+- Pydantic
+
+## Setup
+
+Run these commands from the project directory.
+
+### 1. Create and activate a virtual environment
+
+macOS/Linux:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+Windows PowerShell:
+
+```powershell
+python -m venv .venv
+.venv\\Scripts\\Activate.ps1
+```
+
+### 2. Install dependencies
+
+```bash
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+### 3. Initialize and populate the sample database
+
+```bash
+python sample_data.py
+```
+
+This loads the fictional sample patients and related demonstration records. Run it only when you intend to initialize or reset the sample dataset, and check the script's behavior before rerunning it against an existing database.
+
+### 4. Launch the dashboard
+
+```bash
+streamlit run charts.py
+```
+
+Streamlit prints a local URL in the terminal, usually `http://localhost:8501`. Open that address in your browser.
+
+## How to use the prototype
+
+1. Choose a fictional patient from the patient selector.
+2. Choose one of that patient's symptoms.
+3. Review the severity metrics and trend chart.
+4. Expand the underlying-report table to inspect the observations behind the chart.
+5. Scroll to **Pre-Visit Summary** and select **Generate Pre-Visit Summary**.
+6. Review the generated Markdown preview and download the summary.
+
+The summary includes the available patient overview, symptom history and trend information, medication records, bloodwork reminders, progress-photo metadata, and recorded review items.
+
+## Data flow and module responsibilities
+
+| Module | Responsibility |
+|---|---|
+| `models.py` | Defines and validates the Pydantic data models. |
+| `database.py` | Creates the SQLite schema and provides database operations. |
+| `sample_data.py` | Adds the fictional demonstration patients and related records. |
+| `parser.py` | Demonstrates rule-based extraction from free-text symptom reports. |
+| `queries.py` | Provides reusable queries for patient histories and symptom observations. |
+| `analytics.py` | Calculates descriptive patient-level symptom statistics and trends. |
+| `visit_summary.py` | Generates a provider-facing pre-visit summary in Markdown. |
+| `charts.py` | Runs the Streamlit dashboard and connects the chart and summary workflow. |
+
+At a high level, patient reports are represented by validated models, stored in SQLite, retrieved through query functions, and used by the analytics and presentation layers.
+
+## Design decisions and trade-offs
+
+### Relational storage with SQLite
+
+SQLite keeps the prototype easy to run locally and provides relational tables and foreign-key relationships without requiring a separate database server. A managed PostgreSQL database would be a more suitable option for a multi-user production deployment.
+
+### Preserve the original patient wording
+
+The original report text is retained alongside structured observations. This makes extracted fields traceable to the source wording and gives a reviewer context when an extraction is incomplete or uncertain.
+
+### Conservative rule-based extraction
+
+The parser extracts only details supported by its rules. Missing or conflicting information can be left unknown and flagged for human review rather than silently guessed. Rule-based parsing is explainable and lightweight, but it is less flexible than a validated language-model extraction pipeline and may not recognize varied phrasing.
+
+### Descriptive analytics, not clinical conclusions
+
+Severity trends use numeric scores that are present in the stored observations. A higher or lower score is described as a worsening or improving trend in the reported data; it is not a diagnosis or an automated clinical alert. Missing scores are not invented.
+
+### Markdown pre-visit summary
+
+A Markdown summary is portable, simple to generate, easy to inspect, and straightforward to download. It demonstrates a delivery path without requiring access to a real EHR. It is not a secure EHR integration and would need appropriate identity matching, access controls, audit logging, and clinician review before any real-world use.
+
+## Limitations and next steps
+
+- The parser is a rule-based demonstration and does not understand every way a patient might describe a symptom.
+- The parser demonstration is separate from the current seeded dashboard data flow; parser review flags are not automatically persisted into the sample database unless a report is explicitly processed and saved through an integrated workflow.
+- The dashboard and generated summary operate on the records already stored in the local SQLite database.
+- Progress-photo entries represent metadata and file references; the summary does not embed or clinically assess images.
+- The prototype has no authentication, authorization, encryption-at-rest configuration, audit trail, EHR connection, or production deployment controls.
+- Synthetic data is used throughout the demonstration.
+
+Potential extensions include connecting parsed reports to the database with a human-review step, adding tests for extraction edge cases, and comparing document delivery with standards-based options such as FHIR resources.
+
+## Running individual modules
+
+From the project directory, you can run selected modules to inspect their output:
+
+```bash
+python parser.py
+python analytics.py
+python visit_summary.py
+```
+
+The dashboard is launched separately:
+
+```bash
+streamlit run charts.py
+```
+
+## Disclaimer
+
+PatientTrack is an educational prototype built with fictional data. It is not intended for clinical use, diagnosis, treatment recommendations, or storage of real patient information.
