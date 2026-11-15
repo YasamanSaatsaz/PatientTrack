@@ -1,0 +1,42 @@
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local environment variables and secrets
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+
+# Local SQLite databases
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+
+# Generated pre-visit summaries
+summaries/*.md
+
+# Keep placeholder files if these folders are tracked
+!data/.gitkeep
+!summaries/.gitkeep
+
+# macOS and Windows files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor and IDE settings
+.vscode/
+.idea/
+
+# Testing and coverage artifacts
+.pytest_cache/
+.coverage
+htmlcov/

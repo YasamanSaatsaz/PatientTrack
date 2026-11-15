@@ -2,7 +2,7 @@
 
 PatientTrack is a small prototype for organizing synthetic patient-reported dermatology updates over time. It demonstrates how free-text symptom reports can be represented as structured data, stored in a relational database, analyzed for simple trends, and presented in a provider-facing dashboard with a downloadable pre-visit summary.
 
-> **Prototype and data notice:** This project uses synthetic demonstration data only. It is not a production clinical system, does not provide diagnoses, and should not be used to make treatment decisions.
+**Prototype and data notice:** This project uses synthetic demonstration data only. It is not a production clinical system, does not provide diagnoses, and should not be used to make treatment decisions.
 
 ## Features
 
@@ -10,9 +10,10 @@ PatientTrack is a small prototype for organizing synthetic patient-reported derm
 - **SQLite storage** for patients, medications, symptom reports and observations, bloodwork reminders, and progress-photo metadata.
 - **Synthetic sample dataset** with five fictional patients and longitudinal dermatology reports.
 - **Rule-based text parser** that extracts supported symptom details and flags ambiguous or incomplete reports for review.
-- **Report-processing service** that connects the parser to the database, validates the patient and report input, and saves the original report alongside its extracted observations and review status.
+- **Report-processing service** that validates report input, connects the parser to the database, and saves the original report alongside its extracted observations and review status.
 - **Patient analytics** that summarize observation counts, severity, and descriptive symptom trends.
 - **Streamlit dashboard** with patient and symptom selection, severity trend charts, summary metrics, and an underlying-report table.
+- **Report-submission form** that allows a user to submit a free-text symptom update for the selected patient directly through the dashboard.
 - **Pre-visit summary generation** that consolidates patient information into a Markdown document that can be previewed and downloaded.
 
 ## Project structure
@@ -33,6 +34,7 @@ PatientTrack/
 ├── analytics.py
 ├── visit_summary.py
 ├── requirements.txt
+├── .gitignore
 └── README.md
 ```
 
