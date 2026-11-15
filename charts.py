@@ -2,8 +2,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from database import get_patients
-from queries import get_patient_symptom_history
+from database import get_patients, get_patient_observations
 from report_service import process_and_save_report
 from visit_summary import generate_pre_visit_summary
 
@@ -12,6 +11,8 @@ def create_symptom_trend_chart(patient_id: str, symptom_name: str):
     """
     Create a Plotly line chart for one patient's selected symptom.
 
+    Only observations with recorded numeric severity scores are charted.
+
     Args:
         patient_id: Unique ID of the patient.
         symptom_name: Symptom to display.
@@ -19,15 +20,19 @@ def create_symptom_trend_chart(patient_id: str, symptom_name: str):
     Returns:
         A Plotly Figure, or None if there is no chartable data.
     """
-
-    history = get_patient_symptom_history(patient_id)
+    
+    history = get_patient_observations(patient_id)
 
     if not history:
         return None
 
     data = pd.DataFrame(history)
 
-    # Keep only observations for the selected symptom that have a severity score.
+    data["severity"] = pd.to_numeric(
+        data["severity"],
+        errors="coerce",
+    )
+
     data = data[
         (data["symptom_name"] == symptom_name)
         & data["severity"].notna()
@@ -75,7 +80,7 @@ def create_symptom_trend_chart(patient_id: str, symptom_name: str):
 
 def main():
     """Display the PatientTrack dashboard."""
-    
+
     st.set_page_config(
         page_title="PatientTrack — Patient Dashboard",
         page_icon="📈",
@@ -84,6 +89,7 @@ def main():
 
     st.title("PatientTrack")
     st.subheader("Patient-reported symptom trends")
+
     st.caption(
         "Synthetic dermatology data. Severity scores are patient-reported "
         "on a scale from 1 (mild) to 5 (severe)."
@@ -108,13 +114,16 @@ def main():
         "Select a patient",
         options=list(patient_options.keys()),
     )
+
     selected_patient_id = patient_options[selected_patient_label]
 
     # --------------------------------------------------
     # REPORT SUBMISSION
     # --------------------------------------------------
+
     st.divider()
     st.header("Submit a Symptom Report")
+
     st.write(
         "Enter a patient's symptom update in their own words. "
         "PatientTrack will attempt to extract supported details, "
@@ -142,6 +151,7 @@ def main():
     if submit_report:
         if not raw_report_text.strip():
             st.error("Please enter a symptom report before submitting.")
+
         else:
             try:
                 result = process_and_save_report(
@@ -157,11 +167,12 @@ def main():
                     "requires_review": result["requires_review"],
                 }
 
-                # Refresh the dashboard so the newly saved report is retrieved.
+                # Refresh the dashboard so the new report is retrieved.
                 st.rerun()
 
             except (ValueError, RuntimeError, OSError) as error:
                 st.error(f"Could not submit the report: {error}")
+
             except Exception as error:
                 st.error(
                     "An unexpected error occurred while saving the report. "
@@ -198,10 +209,12 @@ def main():
     # --------------------------------------------------
     # SYMPTOM HISTORY AND CHART
     # --------------------------------------------------
+
     st.divider()
     st.header("Symptom History")
 
-    history = get_patient_symptom_history(selected_patient_id)
+    # Retrieve ALL observations, including those without severity scores.
+    history = get_patient_observations(selected_patient_id)
 
     if not history:
         st.info(
@@ -212,12 +225,21 @@ def main():
     else:
         history_data = pd.DataFrame(history)
 
+        history_data["reported_at"] = pd.to_datetime(
+            history_data["reported_at"]
+        )
+
+        history_data["severity"] = pd.to_numeric(
+            history_data["severity"],
+            errors="coerce",
+        )
+
         symptoms = sorted(
             history_data["symptom_name"].dropna().unique().tolist()
         )
 
         if not symptoms:
-            st.info("No symptoms are available to chart for this patient.")
+            st.info("No symptoms are available for this patient.")
 
         else:
             selected_symptom = st.selectbox(
@@ -225,33 +247,78 @@ def main():
                 options=symptoms,
             )
 
-            chartable_data = history_data[
-                (history_data["symptom_name"] == selected_symptom)
-                & history_data["severity"].notna()
+            # Keep every observation for the selected symptom.
+            symptom_data = history_data[
+                history_data["symptom_name"] == selected_symptom
             ].copy()
+
+            symptom_data = symptom_data.sort_values(
+                "reported_at"
+            )
+
+            # Separately identify observations with numeric severity scores.
+            chartable_data = symptom_data[
+                symptom_data["severity"].notna()
+            ].copy()
+
+            total_observations = len(symptom_data)
+            scored_observations = len(chartable_data)
+
+            # Count observations flagged for manual review.
+            if "needs_review" in symptom_data.columns:
+                review_count = (
+                    symptom_data["needs_review"]
+                    .fillna(False)
+                    .astype(bool)
+                    .sum()
+                )
+            else:
+                review_count = 0
+
+            metric_one, metric_two, metric_three = st.columns(3)
+
+            metric_one.metric(
+                "Total observations",
+                total_observations,
+            )
+
+            metric_two.metric(
+                "Observations with severity",
+                scored_observations,
+            )
+
+            metric_three.metric(
+                "Flagged for review",
+                int(review_count),
+            )
+
+            # ------------------------------------------
+            # SEVERITY CHART
+            # ------------------------------------------
+
+            st.subheader("Symptom severity over time")
 
             if chartable_data.empty:
                 st.info(
                     "There are no severity scores recorded for this symptom. "
-                    "The symptom may still appear in the patient's report history."
+                    "The symptom still appears in the underlying report history."
                 )
 
             else:
-                chartable_data["reported_at"] = pd.to_datetime(
-                    chartable_data["reported_at"]
-                )
-                chartable_data = chartable_data.sort_values("reported_at")
-
                 first_severity = int(chartable_data.iloc[0]["severity"])
                 latest_severity = int(chartable_data.iloc[-1]["severity"])
+
                 severity_change = latest_severity - first_severity
 
-                metric_one, metric_two, metric_three = st.columns(3)
+                metric_one, metric_two = st.columns(2)
 
-                metric_one.metric("Reports", len(chartable_data))
-                metric_two.metric("Latest severity", latest_severity)
-                metric_three.metric(
-                    "Change since first report",
+                metric_one.metric(
+                    "Latest severity",
+                    latest_severity,
+                )
+
+                metric_two.metric(
+                    "Change since first scored observation",
                     f"{severity_change:+d}",
                 )
 
@@ -268,50 +335,103 @@ def main():
 
                 st.caption(
                     "A higher score means the patient reported a more severe "
-                    "symptom. This chart describes reported symptoms; "
+                    "symptom. Only observations with numeric severity scores "
+                    "are plotted. This chart describes reported symptoms; "
                     "it does not provide a diagnosis."
                 )
 
-                with st.expander("View the underlying symptom reports"):
-                    display_data = chartable_data[
-                        [
-                            "reported_at",
-                            "symptom_name",
-                            "severity",
-                            "severity_description",
-                            "frequency_count",
-                            "medication_context",
-                        ]
-                    ].copy()
+            # ------------------------------------------
+            # COMPLETE UNDERLYING SYMPTOM LOG
+            # ------------------------------------------
 
-                    display_data["reported_at"] = (
-                        display_data["reported_at"].dt.strftime(
-                            "%Y-%m-%d %H:%M"
-                        )
-                    )
+            with st.expander(
+                "View all underlying symptom reports",
+                expanded=True,
+            ):
+                display_data = symptom_data.copy()
 
-                    display_data = display_data.rename(
-                        columns={
-                            "reported_at": "Report date",
-                            "symptom_name": "Symptom",
-                            "severity": "Severity",
-                            "severity_description": "Description",
-                            "frequency_count": "Frequency",
-                            "medication_context": "Medication context",
-                        }
+                # Display severity values as consistent strings for Streamlit.
+                display_data["severity"] = display_data["severity"].apply(
+                    lambda value: (
+                        "Not reported" if pd.isna(value) else str(int(value))
                     )
+                )
 
-                    st.dataframe(
-                        display_data,
-                        use_container_width=True,
-                        hide_index=True,
+                # Display review status in readable language.
+                if "needs_review" in display_data.columns:
+                    display_data["Review status"] = (
+                        display_data["needs_review"]
+                        .fillna(False)
+                        .astype(bool)
+                        .map({
+                            True: "Needs review",
+                            False: "No review flag",
+                        })
                     )
+                else:
+                    display_data["Review status"] = "Not available"
+
+                # Preserve the reason for review when one is recorded.
+                if "review_reason" not in display_data.columns:
+                    display_data["review_reason"] = None
+
+                # Preserve the original patient-submitted wording.
+                if "raw_text" not in display_data.columns:
+                    display_data["raw_text"] = None
+
+                # Add report ID when available.
+                if "report_id" not in display_data.columns:
+                    display_data["report_id"] = None
+
+                # Format timestamps for display.
+                display_data["reported_at"] = (
+                    pd.to_datetime(display_data["reported_at"])
+                    .dt.strftime("%Y-%m-%d %H:%M")
+                )
+
+                # Select and rename the fields shown in the table.
+                table_columns = {
+                    "reported_at": "Report date",
+                    "report_id": "Report ID",
+                    "symptom_name": "Symptom",
+                    "severity": "Severity",
+                    "severity_description": "Description",
+                    "frequency_count": "Frequency",
+                    "medication_context": "Medication context",
+                    "Review status": "Review status",
+                    "review_reason": "Review reason",
+                    "raw_text": "Original patient report",
+                }
+
+                available_columns = [
+                    column
+                    for column in table_columns
+                    if column in display_data.columns
+                ]
+
+                display_data = display_data[available_columns].rename(
+                    columns=table_columns
+                )
+
+                st.dataframe(
+                    display_data,
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
+                st.caption(
+                    "Observations without a numeric severity score are "
+                    "included in this table but excluded from the severity chart. "
+                    "Reports flagged for review should be assessed by a reviewer."
+                )
 
     # --------------------------------------------------
     # PRE-VISIT SUMMARY
     # --------------------------------------------------
+
     st.divider()
     st.header("Pre-Visit Summary")
+
     st.write(
         "Generate a consolidated summary of this patient's reported symptoms, "
         "medications, reminders, progress-photo records, and review items."

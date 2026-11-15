@@ -16,6 +16,7 @@ __pycache__/
 .streamlit/secrets.toml
 
 # Local SQLite databases
+# The sample database can be regenerated using sample_data.py.
 data/*.db
 data/*.sqlite
 data/*.sqlite3
@@ -23,7 +24,7 @@ data/*.sqlite3
 # Generated pre-visit summaries
 summaries/*.md
 
-# Keep placeholder files if these folders are tracked
+# Keep data and summaries folders in Git if placeholder files are added
 !data/.gitkeep
 !summaries/.gitkeep
 
