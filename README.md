@@ -191,6 +191,22 @@ A Markdown summary is portable, simple to generate, easy to inspect, and straigh
 
 Potential extensions include adding a dedicated review and correction workflow, adding tests for extraction edge cases, and comparing document delivery with standards-based options such as FHIR resources.
 
+## Delivery options comparison
+
+PatientTrack uses a generated Markdown pre-visit summary as its demonstration delivery path.
+
+| Delivery option | Advantages | Limitations |
+|---|---|---|
+| Markdown pre-visit summary | Easy to generate, read, inspect, and download. | Not a standardized EHR integration format. |
+| FHIR JSON | Supports structured healthcare data exchange and interoperability. | Requires appropriate resource mapping and implementation of a FHIR interface. |
+| HL7 messaging | Supports exchange of healthcare information between systems. | Requires message specifications, integration infrastructure, and receiving-system compatibility. |
+
+### Recommendation
+
+For this prototype, a generated Markdown pre-visit summary is the most practical delivery option. It demonstrates how structured patient-reported information can be consolidated into a clinician-readable document without requiring access to an external EHR.
+
+FHIR JSON would be a logical next step if the project were extended to support standards-based healthcare data exchange.
+
 ## Running individual modules
 
 From the project directory, you can run selected modules to inspect their output:
