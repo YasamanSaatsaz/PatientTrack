@@ -120,6 +120,11 @@ When a report is submitted:
 5. The report and its observations are saved in SQLite.
 6. The dashboard refreshes and displays a confirmation, including the database report ID and whether the report requires review.
 
+*Example:*
+```text
+My lips have been very dry for the past 3 days. It happened twice today after starting isotretinoin. It feels very uncomfortable.
+```
+
 The original patient wording is preserved alongside the structured observations. This allows a reviewer to compare extracted information with the source report.
 
 ### Missing or ambiguous information
